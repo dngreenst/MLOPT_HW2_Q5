@@ -1,4 +1,5 @@
 import copy
+import unittest
 from enum import Enum
 from typing import Tuple
 
@@ -31,11 +32,16 @@ class StochasticGradient(FirstOrderOracle):
         self.t = 1
         self.alpha = 2 * min(w)
 
+    def full_gradient(self, A, b, y: np.array) -> np.array:
+        return np.transpose(self.A) @ self.A @ y - np.transpose(self.A) @ self.b
+
     def oracle(self, x_t) -> np.array:
         num_rows, _ = self.A.shape
         chosen_index = np.random.randint(low=0, high=num_rows)
-        stochastic_gradient = num_rows * (np.transpose(self.A[chosen_index]) @ self.A[chosen_index] * x_t -
-                                          np.transpose(self.A[chosen_index]) * self.b[chosen_index])
+        # stochastic_gradient = num_rows * (np.transpose(self.A[chosen_index]) @ self.A[chosen_index] * x_t -
+        #                                   np.transpose(self.A[chosen_index]) * self.b[chosen_index])
+        # stochastic_gradient = num_rows * self.full_gradient(A=self.A[chosen_index],b=np.array(self.b[chosen_index]), y=x_t)
+        stochastic_gradient = self.full_gradient(A=self.A[chosen_index],b=np.array(self.b[chosen_index]), y=x_t)
 
         step_size = 2 / (self.alpha * (self.t + 1))
         self.t += 1
@@ -59,7 +65,7 @@ class MiniBatchStochasticGradient(FirstOrderOracle):
         stochastic_gradient = np.zeros_like(x_t)
         for _ in range(batch_size):
             chosen_index = np.random.randint(low=0, high=num_rows)
-            stochastic_gradient += (1 / batch_size) * num_rows * (
+            stochastic_gradient += (1 / batch_size) * (
                     np.transpose(self.A[chosen_index]) @ self.A[chosen_index] * x_t -
                     np.transpose(self.A[chosen_index]) * self.b[chosen_index])
 
@@ -102,8 +108,8 @@ class StochasticVarianceReductionGradient(FirstOrderOracle):
 
 
 def generate_random_input(strongly_convex: bool) -> Tuple[np.array, np.array, np.array, np.array, np.array]:
-    n = 10
-    m = 20 if strongly_convex else 1
+    n = 20
+    m = 40 if strongly_convex else 1
 
     default_rng = np.random.default_rng()
 
@@ -258,3 +264,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
