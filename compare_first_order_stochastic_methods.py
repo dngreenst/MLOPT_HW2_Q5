@@ -108,6 +108,7 @@ def generate_random_input(strongly_convex: bool) -> Tuple[np.array, np.array, np
     default_rng = np.random.default_rng()
 
     x_1 = default_rng.standard_normal(n)
+    x_1 = x_1 / np.linalg.norm(x_1)
 
     opt = default_rng.standard_normal(n)
 
@@ -149,12 +150,18 @@ def stochastic_gradient_alg(oracle: StochasticGradient,
     running_sum_x_t = x_1
 
     for effective_iter in range(required_effective_number_of_passes):
+        prev_T = ((effective_iter) * int(np.ceil(num_iterations_per_effective_pass)))
+        if prev_T > 0.0:
+            ratio = (prev_T * (prev_T + 1)) / (new_curr_T * (new_curr_T + 1))
+            running_sum_x_t *= ratio
+        new_curr_T = ((effective_iter + 1) * int(np.ceil(num_iterations_per_effective_pass)))
         for _ in range(int(np.ceil(num_iterations_per_effective_pass))):
             x_t = oracle.oracle(x_t=x_t)
-            running_sum_x_t += 2 * oracle.t * x_t
-        curr_T = ((effective_iter + 1) * num_iterations_per_effective_pass)
-        avg_x_t = running_sum_x_t / (curr_T * (curr_T+1))
-        evaluator.evaluate(curr_iter=effective_iter, curr_xt=avg_x_t)
+            running_sum_x_t += 2 * oracle.t * x_t / (new_curr_T * (new_curr_T + 1))
+
+        avg_x_t = running_sum_x_t
+        # evaluator.evaluate(curr_iter=effective_iter, curr_xt=avg_x_t)
+        evaluator.evaluate(curr_iter=effective_iter, curr_xt=x_t)
 
 
 def mini_batch_alg(oracle: MiniBatchStochasticGradient,
@@ -202,7 +209,7 @@ def main():
         A, b, G, D, x_1 = generate_random_input(strongly_convex=True)
 
         optimal_solution_arg = np.linalg.pinv(np.transpose(A) @ A) @ np.transpose(A) @ b
-        optimal_solution_val = np.power(np.linalg.norm(A @ optimal_solution_arg - b), 2)
+        optimal_solution_val = 0.5 * np.power(np.linalg.norm(A @ optimal_solution_arg - b), 2)
 
         svrg_oracle = StochasticVarianceReductionGradient(A=A, b=b)
         print(f'optimal_solution_val = {optimal_solution_val}')
