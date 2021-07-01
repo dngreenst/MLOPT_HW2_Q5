@@ -57,6 +57,9 @@ class MiniBatchStochasticGradient(FirstOrderOracle):
         self.t = 1
         self.alpha = 2 * min(w)
 
+    def full_gradient(self, A, b, y: np.array) -> np.array:
+        return np.transpose(self.A) @ self.A @ y - np.transpose(self.A) @ self.b
+
     def oracle(self, x_t) -> np.array:
         raise NotImplemented(f'Don\'t use me')
 
@@ -65,9 +68,11 @@ class MiniBatchStochasticGradient(FirstOrderOracle):
         stochastic_gradient = np.zeros_like(x_t)
         for _ in range(batch_size):
             chosen_index = np.random.randint(low=0, high=num_rows)
-            stochastic_gradient += (1 / batch_size) * (
-                    np.transpose(self.A[chosen_index]) @ self.A[chosen_index] * x_t -
-                    np.transpose(self.A[chosen_index]) * self.b[chosen_index])
+
+            # stochastic_gradient += (1 / batch_size) * (
+            #         np.transpose(self.A[chosen_index]) @ self.A[chosen_index] * x_t -
+            #         np.transpose(self.A[chosen_index]) * self.b[chosen_index])
+            stochastic_gradient += (1 / batch_size) * self.full_gradient(A=self.A[chosen_index], b=np.array(self.b[chosen_index]), y=x_t)
 
         step_size = 2 / (self.alpha * (self.t + 1))
         self.t += 1
